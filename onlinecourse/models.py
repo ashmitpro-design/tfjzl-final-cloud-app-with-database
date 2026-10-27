@@ -80,9 +80,17 @@ class Lesson(models.Model):
 
 
 class Question(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
     question_text = models.CharField(max_length=2000)
     grade = models.IntegerField(default=1)
+
+    def is_get_score(self, selected_ids):
+        """Return True only when all and only the correct choices were selected."""
+        correct_ids = set(self.choice_set.filter(is_correct=True).values_list('id', flat=True))
+        selected_for_question = set(
+            self.choice_set.filter(id__in=selected_ids).values_list('id', flat=True)
+        )
+        return bool(correct_ids) and selected_for_question == correct_ids
 
     def __str__(self):
         return self.question_text
@@ -124,8 +132,5 @@ class Submission(models.Model):
     choices = models.ManyToManyField(Choice)
     submitted_at = models.DateTimeField(auto_now_add=True)
 
-    def is_get_score(self):
-        return sum(choice.question.grade for choice in self.choices.select_related('question') if choice.is_correct)
-
     def __str__(self):
-        return f"Submission {self.pk} by {self.enrollment.user.username}"
+        return f"Submission: {self.enrollment.user.username} - {self.enrollment.course.name}"

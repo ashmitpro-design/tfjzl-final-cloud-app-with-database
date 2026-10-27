@@ -115,13 +115,15 @@ def enroll(request, course_id):
 
 # An example method to collect the selected choices from the exam form from the request object
 def extract_answers(request):
-   submitted_anwsers = []
-   for key in request.POST:
-       if key.startswith('choice'):
-           value = request.POST[key]
-           choice_id = int(value)
-           submitted_anwsers.append(choice_id)
-   return submitted_anwsers
+    submitted_answers = []
+    for key in request.POST:
+        if key.startswith('choice'):
+            for value in request.POST.getlist(key):
+                try:
+                    submitted_answers.append(int(value))
+                except (TypeError, ValueError):
+                    continue
+    return submitted_answers
 
 
 from django.contrib.auth.decorators import login_required
@@ -134,15 +136,12 @@ from django.core.exceptions import PermissionDenied
 def submit(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
     enrollment = get_object_or_404(Enrollment, user=request.user, course=course)
-    questions = Question.objects.filter(lesson__course=course)
+    questions = Question.objects.filter(course=course)
     valid_choices = Choice.objects.filter(question__in=questions)
     selected_ids = extract_answers(request)
     selected = list(valid_choices.filter(pk__in=selected_ids).select_related('question'))
     if len(selected) != len(set(selected_ids)):
         raise PermissionDenied("One or more selected answers do not belong to this course.")
-    # A single answer is accepted per question; reject duplicate answers for one question.
-    if len({choice.question_id for choice in selected}) != len(selected):
-        raise PermissionDenied("Select at most one answer per question.")
     submission = Submission.objects.create(enrollment=enrollment)
     submission.choices.set(selected)
     return redirect('onlinecourse:show_exam_result', course_id=course.id, submission_id=submission.id)
@@ -155,22 +154,30 @@ def show_exam_result(request, course_id, submission_id):
         Submission.objects.select_related('enrollment__user', 'enrollment__course'),
         pk=submission_id, enrollment__course=course, enrollment__user=request.user,
     )
-    questions = Question.objects.filter(lesson__course=course).prefetch_related('choice_set')
-    selected_by_question = {choice.question_id: choice for choice in submission.choices.select_related('question')}
+    questions = Question.objects.filter(course=course).prefetch_related('choice_set')
+    selected_ids = list(submission.choices.values_list('id', flat=True))
+    selected_by_question = {}
+    for choice in submission.choices.select_related('question'):
+        selected_by_question.setdefault(choice.question_id, []).append(choice)
     results = []
-    total = 0
+    possible_score = sum(question.grade for question in questions)
+    score = 0
     for question in questions:
-        selected = selected_by_question.get(question.id)
+        selected = selected_by_question.get(question.id, [])
         correct = question.choice_set.filter(is_correct=True).first()
-        total += question.grade
+        is_correct = question.is_get_score(selected_ids)
+        if is_correct:
+            score += question.grade
         results.append({'question': question, 'selected': selected, 'correct': correct,
-                        'is_correct': bool(selected and selected.is_correct)})
-    score = submission.is_get_score()
-    passed = score >= total * 0.8 if total else False
+                        'is_correct': is_correct})
+    passed = score >= possible_score * 0.8 if possible_score else False
+    percentage = (score / possible_score * 100) if possible_score else 0
     return render(request, 'onlinecourse/exam_result_bootstrap.html', {
         'course': course, 'submission': submission, 'results': results,
-        'grade': (score / total * 100) if total else 0, 'score': score,
-        'total': total, 'passed': passed,
+        'grade': percentage, 'score': score,
+        'total': possible_score, 'possible_score': possible_score,
+        'possible': possible_score, 'selected_ids': selected_ids,
+        'passed': passed,
     })
 
 

@@ -10,25 +10,23 @@
 <nav class="navbar navbar-dark bg-primary"><a class="navbar-brand" href="{% url 'onlinecourse:index' %}">OnlineCourse</a></nav>
 <main class="container py-4">
   <h1>{{ course.name }}</h1><p>{{ course.description }}</p>
-  {% if course.lesson_set.all %}
+  {% for lesson in course.lesson_set.all %}
+    <section class="card mb-3"><div class="card-header">Lesson {{ lesson.order|add:1 }}: {{ lesson.title }}</div><div class="card-body">{{ lesson.content }}</div></section>
+  {% empty %}<div class="alert alert-info">No lessons have been added to this course yet.</div>{% endfor %}
+  {% if course.question_set.all %}
   <form method="post" action="{% url 'onlinecourse:submit' course.id %}">
     {% csrf_token %}
-    {% for lesson in course.lesson_set.all %}
-      <section class="card mb-3"><div class="card-header">Lesson {{ lesson.order|add:1 }}: {{ lesson.title }}</div>
-        <div class="card-body"><p>{{ lesson.content }}</p>
-          {% for question in lesson.question_set.all %}
-            <fieldset class="mb-3"><legend class="h5">{{ question.question_text }} <small>({{ question.grade }} point{{ question.grade|pluralize }})</small></legend>
-              {% for choice in question.choice_set.all %}
-                <div class="form-check"><input class="form-check-input" type="radio" name="choice_{{ question.id }}" id="choice_{{ choice.id }}" value="{{ choice.id }}"><label class="form-check-label" for="choice_{{ choice.id }}">{{ choice.choice_text }}</label></div>
-              {% empty %}<p class="text-muted">No choices are available yet.</p>{% endfor %}
-            </fieldset>
-          {% empty %}<p class="text-muted">No questions for this lesson yet.</p>{% endfor %}
-        </div>
-      </section>
+    <h2 class="h3">Assessment</h2>
+    {% for question in course.question_set.all %}
+      <fieldset class="card card-body mb-3"><legend class="h5">{{ question.question_text }} <small>({{ question.grade }} point{{ question.grade|pluralize }})</small></legend>
+        {% for choice in question.choice_set.all %}
+          <div class="form-check"><input class="form-check-input" type="checkbox" name="choice_{{ question.id }}" id="choice_{{ choice.id }}" value="{{ choice.id }}"><label class="form-check-label" for="choice_{{ choice.id }}">{{ choice.choice_text }}</label></div>
+        {% empty %}<p class="text-muted">No choices are available yet.</p>{% endfor %}
+      </fieldset>
     {% endfor %}
     {% if user.is_authenticated %}<button class="btn btn-primary" type="submit">Submit exam</button>{% else %}<a class="btn btn-primary" href="{% url 'onlinecourse:login' %}">Log in to submit</a>{% endif %}
   </form>
-  {% else %}<div class="alert alert-info">No lessons have been added to this course yet.</div>{% endif %}
+  {% else %}<div class="alert alert-info">No questions have been added to this course yet.</div>{% endif %}
 </main>
 </body>
 </html>
