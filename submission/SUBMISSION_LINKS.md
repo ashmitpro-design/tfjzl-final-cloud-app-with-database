@@ -8,4 +8,5 @@ Public repository: https://github.com/ashmitpro-design/tfjzl-final-cloud-app-wit
 4. Task 4 — course_details_bootstrap.html: https://github.com/ashmitpro-design/tfjzl-final-cloud-app-with-database/blob/main/onlinecourse/templates/onlinecourse/course_details_bootstrap.html
 5. Task 5 — views.py: https://github.com/ashmitpro-design/tfjzl-final-cloud-app-with-database/blob/main/onlinecourse/views.py
 6. Task 6 — urls.py: https://github.com/ashmitpro-design/tfjzl-final-cloud-app-with-database/blob/main/onlinecourse/urls.py
-7. Task 7 — successful exam screenshot: use the genuine passing result screenshot captured from the running course app.
+7. Task 7 — successful exam screenshot: not stored in this repository; upload the genuine passing exam result screenshot.
+
