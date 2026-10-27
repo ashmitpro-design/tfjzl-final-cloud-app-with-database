@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ course.name }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-primary"><a class="navbar-brand" href="{% url 'onlinecourse:index' %}">OnlineCourse</a></nav>
+<main class="container py-4">
+  <h1>{{ course.name }}</h1><p>{{ course.description }}</p>
+  {% if course.lesson_set.all %}
+  <form method="post" action="{% url 'onlinecourse:submit' course.id %}">
+    {% csrf_token %}
+    {% for lesson in course.lesson_set.all %}
+      <section class="card mb-3"><div class="card-header">Lesson {{ lesson.order|add:1 }}: {{ lesson.title }}</div>
+        <div class="card-body"><p>{{ lesson.content }}</p>
+          {% for question in lesson.question_set.all %}
+            <fieldset class="mb-3"><legend class="h5">{{ question.question_text }} <small>({{ question.grade }} point{{ question.grade|pluralize }})</small></legend>
+              {% for choice in question.choice_set.all %}
+                <div class="form-check"><input class="form-check-input" type="radio" name="choice_{{ question.id }}" id="choice_{{ choice.id }}" value="{{ choice.id }}"><label class="form-check-label" for="choice_{{ choice.id }}">{{ choice.choice_text }}</label></div>
+              {% empty %}<p class="text-muted">No choices are available yet.</p>{% endfor %}
+            </fieldset>
+          {% empty %}<p class="text-muted">No questions for this lesson yet.</p>{% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+    {% if user.is_authenticated %}<button class="btn btn-primary" type="submit">Submit exam</button>{% else %}<a class="btn btn-primary" href="{% url 'onlinecourse:login' %}">Log in to submit</a>{% endif %}
+  </form>
+  {% else %}<div class="alert alert-info">No lessons have been added to this course yet.</div>{% endif %}
+</main>
+</body>
+</html>

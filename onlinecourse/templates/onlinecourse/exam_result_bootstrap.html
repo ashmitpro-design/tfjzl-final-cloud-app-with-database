@@ -1,55 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    {% load static %}
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-</head>
-<body>
-
- <nav class="navbar navbar-light bg-light">
-    <div class="container-fluid">
-        <div class="navbar-header">
-              <a class="navbar-brand" href="{% url 'onlinecourse:index' %}">Home</a>
-        </div>
-        <ul class="nav navbar-nav navbar-right">
-            {% if user.is_authenticated %}
-            <li>
-                <a class="btn btn-link" href="#">{{ user.first_name }}({{ user.username }})</a>
-                <a class="btn btn-link" href="{% url 'onlinecourse:logout' %}">Logout</a>
-            </li>
-            {% else %}
-            <li>
-                <form class="form-inline" action="{% url 'onlinecourse:login' %}" method="post">
-                    {% csrf_token %}
-                    <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Username" name="username" >
-                        <input type="password" class="form-control" placeholder="Username" name="psw" >
-                        <button class="btn btn-primary" type="submit">Login</button>
-                        <a class="btn btn-link" href="{% url 'onlinecourse:registration' %}">Sign Up</a>
-                    </div>
-                </form>
-            </li>
-            {% endif %}
-        </ul>
-    </div>
-</nav>
-
-<div class="container-fluid">
-    {% if grade > 80 %}
-    <div class="alert alert-success">
-       <!--HINT Display passed info -->
-    </div>
-        {% else %}
-        <div class="alert alert-danger">
-            <!--HINT Display failed info -->
-        </div>
-        <a class="btn btn-link text-danger" href="{% url 'onlinecourse:course_details' course.id %}">Re-test</a>
-        {% endif %}
-        <div class="card-columns-vertical mt-1">
-        <h5 class="">Exam results</h5>
-            <!--HINT Display exam results-->
-        </div>
-    </div>
-</body>
-</html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Exam results</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css"></head>
+<body class="bg-light"><nav class="navbar navbar-dark bg-primary"><a class="navbar-brand" href="{% url 'onlinecourse:index' %}">OnlineCourse</a></nav>
+<main class="container py-4"><section class="card mb-4"><div class="card-body"><h1>Exam results</h1><h2 class="h5">{{ course.name }}</h2><p><strong>Score:</strong> {{ score }} / {{ total }} points</p><p><strong>Status:</strong> {% if passed %}<span class="badge badge-success">Passed</span>{% else %}<span class="badge badge-danger">Not passed</span>{% endif %}</p>
+{% if passed %}<div class="alert alert-success"><h3>Congratulations!</h3><p class="mb-0">You successfully passed this assessment.</p></div>{% else %}<div class="alert alert-warning">Keep studying and try again.</div>{% endif %}</div></section>
+<h2>Question results</h2>{% for item in results %}<section class="card mb-3"><div class="card-body"><h3 class="h5">{{ forloop.counter }}. {{ item.question.question_text }} <small>({{ item.question.grade }} point{{ item.question.grade|pluralize }})</small></h3><p>Your answer: {{ item.selected.choice_text|default:'No answer selected' }}</p><p>Correct answer: {{ item.correct.choice_text|default:'No correct choice configured' }}</p><p>{% if item.is_correct %}<span class="text-success">Correct</span>{% else %}<span class="text-danger">Incorrect</span>{% endif %}</p></div></section>{% empty %}<p>No questions were configured for this course.</p>{% endfor %}
+<a class="btn btn-outline-primary" href="{% url 'onlinecourse:course_details' course.id %}">Back to course</a></main></body></html>

@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Question, Choice, Submission
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -86,7 +86,7 @@ class CourseListView(generic.ListView):
 
 class CourseDetailView(generic.DetailView):
     model = Course
-    template_name = 'onlinecourse/course_detail_bootstrap.html'
+    template_name = 'onlinecourse/course_details_bootstrap.html'
 
 
 def enroll(request, course_id):
@@ -122,6 +122,56 @@ def extract_answers(request):
            choice_id = int(value)
            submitted_anwsers.append(choice_id)
    return submitted_anwsers
+
+
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from django.core.exceptions import PermissionDenied
+
+
+@login_required
+@require_POST
+def submit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    enrollment = get_object_or_404(Enrollment, user=request.user, course=course)
+    questions = Question.objects.filter(lesson__course=course)
+    valid_choices = Choice.objects.filter(question__in=questions)
+    selected_ids = extract_answers(request)
+    selected = list(valid_choices.filter(pk__in=selected_ids).select_related('question'))
+    if len(selected) != len(set(selected_ids)):
+        raise PermissionDenied("One or more selected answers do not belong to this course.")
+    # A single answer is accepted per question; reject duplicate answers for one question.
+    if len({choice.question_id for choice in selected}) != len(selected):
+        raise PermissionDenied("Select at most one answer per question.")
+    submission = Submission.objects.create(enrollment=enrollment)
+    submission.choices.set(selected)
+    return redirect('onlinecourse:show_exam_result', course_id=course.id, submission_id=submission.id)
+
+
+@login_required
+def show_exam_result(request, course_id, submission_id):
+    course = get_object_or_404(Course, pk=course_id)
+    submission = get_object_or_404(
+        Submission.objects.select_related('enrollment__user', 'enrollment__course'),
+        pk=submission_id, enrollment__course=course, enrollment__user=request.user,
+    )
+    questions = Question.objects.filter(lesson__course=course).prefetch_related('choice_set')
+    selected_by_question = {choice.question_id: choice for choice in submission.choices.select_related('question')}
+    results = []
+    total = 0
+    for question in questions:
+        selected = selected_by_question.get(question.id)
+        correct = question.choice_set.filter(is_correct=True).first()
+        total += question.grade
+        results.append({'question': question, 'selected': selected, 'correct': correct,
+                        'is_correct': bool(selected and selected.is_correct)})
+    score = submission.is_get_score()
+    passed = score >= total * 0.8 if total else False
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', {
+        'course': course, 'submission': submission, 'results': results,
+        'grade': (score / total * 100) if total else 0, 'score': score,
+        'total': total, 'passed': passed,
+    })
 
 
 # <HINT> Create an exam result view to check if learner passed exam and show their question results and result for each question,
